@@ -38,15 +38,15 @@ def refractive_index_poly(T, a1_list, a2_list, wavelength):
     Returns the refractive index using a polynomial temperature dependence at reference temperature of 25°C.
     Parameters:
     T : float or np.ndarray
-        Temperature in degrees Celsius.
+        Temperature in Kelvin.
     a1_list, a2_list : list of float
         Coefficients for the polynomial temperature dependence. They should be lists of length 4.
     wavelength : float or np.ndarray
         Wavelength in nanometers.
     """
-    #To SI units (meters)
-    wavelength = wavelength * 1e-9 #Convert to meters
-    T = T-273.15  # Convert to Kelvin
+    #Convert to micrometers
+    wavelength = wavelength * 1e-3 #Convert to micrometers
+    T = T-273.15  # Convert to Celsius
     term1 = (T-25) * (a1_list[0] + a1_list[1]/wavelength + a1_list[2]/(wavelength**2) + a1_list[3]/(wavelength**3))
     term2 = (T-25)**2 * (a2_list[0] + a2_list[1]/wavelength + a2_list[2]/(wavelength**2) + a2_list[3]/(wavelength**3))
     return term1 + term2
@@ -55,7 +55,7 @@ def refractive_index_total(T, A,B,C,D,E,F,a1_list,a2_list,wavelength):
     Returns the total refractive index considering both Sellmeier equation and polynomial temperature dependence.
     Parameters:
     T : float or np.ndarray
-        Temperature in degrees Celsius.
+        Temperature in Kelvin.
     A, B, C, D, E, F : float
         Sellmeier coefficients for the material.
     a1_list, a2_list : list of float
