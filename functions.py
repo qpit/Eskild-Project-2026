@@ -144,7 +144,7 @@ def second_harmonic_output(QPM, L):
     float
         The second harmonic output amplitude.
     """
-    term = L*np.exp(1j*QPM*L/2)*np.sinc(QPM*L/2/np.pi)
+    term = L*np.exp(1j*QPM*L/2)*np.sinc(QPM*L/2)
     real = np.real(term)
     imag = np.imag(term)
     amplitude = np.sqrt(real**2 + imag**2)
@@ -166,4 +166,72 @@ def double_pass_SHG(QPM, L, phi_reflec):
     term2_imag = np.imag(term2)
     term2_amp = np.sqrt(term2_real**2 + term2_imag**2)
     return term1*term2_amp
+def SH_field_left(QPM, L):
+    """
+    Calculate the field strength after reflection at end of crystal. Meaning integrating from L to 0.
+    Parameters:
+    QPM : array
+        Quasi-phase mismatch values.
+    L : float
+        Length of the crystal.
+    Returns:
+    term : array
+        Second harmonic field strength after reflection.
+    """
+    term = -second_harmonic_output(QPM, L)
+    return term
+def SH_field_right(QPM, L,Delta_r):
+    """
+    ????? Physical?
+    Parameters:
+    QPM : array
+        Quasi-phase mismatch values.
+    L : float
+        Length of the crystal.
+    Delta_r : float
+        Edge width at the right end of the crystal.
+    Returns:
+    term : array
+        ?????? Physical?
+    """
+    return L * np.exp(1j * QPM * ( 3/2*L+2*Delta_r)) * np.sinc(QPM * L / 2)
+def final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_w, omega_w):
+    """
+    Calculate the final second harmonic field exiting the cavity.
+    Parameters:
+    tau : float
+        Transmission coefficient of the output coupler.
+    rho : float
+        Reflection coefficient of the output coupler.
+    QPM : float
+        Quasi-phase mismatch (1/m).
+    L : float
+        Length of the crystal (m).
+    Delta_r : float
+        Edge width at the right end of the crystal (m).
+    Delta_l : float
+        Edge width at the left end of the crystal (m).
+    D : float
+        Distance between the crystal end and the output coupler (m).
+    n_2w : float
+        Refractive index at the second harmonic frequency.
+    omega_2w : float
+        Angular frequency at the second harmonic (rad/s).
+    n_w : float
+        Refractive index at the fundamental frequency.
+    omega_w : float
+        Angular frequency at the fundamental (rad/s).
+    Returns:
+    float
+        Final second harmonic field amplitude exiting the cavity.
+    """
+    field_left = SH_field_left(QPM, L)
+    field_right = SH_field_right(QPM, L, Delta_r)
+    phase_mismatch_value = phase_mismatch(n_2w, omega_2w, n_w, omega_w)
+    wave_vector_2w = wave_vector(n_2w, omega_2w)
+    numerator = 1j*tau*(field_left*np.exp(1j*(wave_vector_2w*D-Delta_l*phase_mismatch_value)) + field_right*np.exp(-1j*Delta_r*phase_mismatch_value))
+    denominator = np.exp(2*1j*wave_vector_2w*D)-rho
+    real_val = np.real(numerator/denominator)
+    imag_val = np.imag(numerator/denominator)
+    return np.sqrt(real_val**2 + imag_val**2)
 
