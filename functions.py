@@ -69,3 +69,85 @@ def refractive_index_total(T, A,B,C,D,E,F,a1_list,a2_list,wavelength):
     term1 = refractive_index_sellmeier(A,B,C,D,E,F,wavelength)
     term2 = refractive_index_poly(T,a1_list,a2_list,wavelength)
     return term1 + term2
+def wave_vector(n, omega):
+    """
+    Calculate the wave vector k given refractive index n and angular frequency omega.
+    Parameters:
+    n : float or np.ndarray
+        Refractive index of the medium.
+    omega : float or np.ndarray
+        Angular frequency (rad/s).
+    Returns:
+        k : float or np.ndarray
+            Wave vector (1/m).
+    """
+    c = 299792458  # Speed of light in m/s
+    k = n * omega / c
+    return k
+def phase_mismatch(n_2w, omega_2w, n_w, omega_w):
+    """
+    Calculate the phase mismatch Δk for second harmonic generation (SHG).
+    Parameters:
+    n_2w : float or np.ndarray
+        Refractive index at the second harmonic frequency.
+    omega_2w : float or np.ndarray
+        Angular frequency at the second harmonic (rad/s).
+    n_w : float or np.ndarray
+        Refractive index at the fundamental frequency.
+    omega_w : float or np.ndarray
+        Angular frequency at the fundamental (rad/s).
+    Returns:
+        Delta_k : float or np.ndarray
+            Phase mismatch (1/m).
+    """
+    return wave_vector(n_2w, omega_2w) - 2 * wave_vector(n_w, omega_w)
+def poling_period(Lambda_0, T, T_0, a_z):
+    """
+    Calculate the poling period Λ(T) as a function of temperature.
+    Parameters:
+    Lambda_0 : float
+        Poling period at reference temperature T_0 (in meters).
+    T : float
+        Current temperature (in Kelvin).
+    T_0 : float
+        Reference temperature (in Kelvin).
+    a_z : float
+        Thermal expansion coefficient along the z-axis (1/K).
+    Returns:
+        Lambda_T : float
+    """
+    return Lambda_0 * (1 + a_z * (T - T_0))
+def quasi_phase_mismatch(n_2w, omega_2w, n_w, omega_w, Lambda_0, T, T_0, a_z):
+    """
+    Calculate the quasi-phase mismatch Δk_QPM.
+    Parameters:
+    Delta_k : float or np.ndarray
+        Phase mismatch (1/m).
+    Lambda_T : float
+        Poling period at temperature T (in meters).
+    Returns:
+        Delta_k_QPM : float or np.ndarray
+            Quasi-phase mismatch (1/m).
+    """
+    Delta_k = phase_mismatch(n_2w, omega_2w, n_w, omega_w)
+    Lambda_T = poling_period(Lambda_0, T, T_0, a_z)
+    return Delta_k - (2 * np.pi) / Lambda_T
+def second_harmonic_output(QPM, L):
+    """
+    Calculate the second harmonic output amplitude as a function of QPM wavevector mismatch and crystal length.
+    Parameters:
+    QPM : float
+        The wavevector mismatch (in 1/m).
+    L : float
+        The length of the nonlinear crystal (in m).
+    Returns:
+    float
+        The second harmonic output amplitude.
+    """
+    term = L*np.exp(1j*QPM*L/2)*np.sinc(QPM*L/2/np.pi)
+    real = np.real(term)
+    imag = np.imag(term)
+    amplitude = np.sqrt(real**2 + imag**2)
+    return amplitude
+
+
