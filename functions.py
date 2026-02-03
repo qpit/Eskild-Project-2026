@@ -149,5 +149,21 @@ def second_harmonic_output(QPM, L):
     imag = np.imag(term)
     amplitude = np.sqrt(real**2 + imag**2)
     return amplitude
-
+def double_pass_SHG(QPM, L, phi_reflec):
+    """
+    Calculate the second harmonic output for a double pass through the crystal.
+    Parameters:
+    QPM : array_like
+        Quasi-phase mismatch values.
+    L : float
+        Length of the crystal.
+    phi_reflec : float
+        Phase shift upon reflection.
+    """
+    term1 = second_harmonic_output(QPM,L)
+    term2 = 1+np.exp(1j*(phi_reflec+L*QPM))
+    term2_real = np.real(term2)
+    term2_imag = np.imag(term2)
+    term2_amp = np.sqrt(term2_real**2 + term2_imag**2)
+    return term1*term2_amp
 
