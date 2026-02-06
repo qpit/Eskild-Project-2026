@@ -144,11 +144,25 @@ def second_harmonic_output(QPM, L):
     float
         The second harmonic output amplitude.
     """
-    term = L*np.exp(1j*QPM*L/2)*np.sinc(QPM*L/2)
+    term = L*np.exp(1j*QPM*L/2)*np.sinc(QPM*L/2/np.pi)
     real = np.real(term)
     imag = np.imag(term)
     amplitude = np.sqrt(real**2 + imag**2)
     return amplitude
+def complex_second_harmonic_field(QPM, L):
+    """
+    Calculate the complex second harmonic output field.
+    Parameters:
+    QPM : float
+        The wavevector mismatch (in 1/m).
+    L : float
+        The length of the nonlinear crystal (in m).
+    Returns:
+    complex
+        The second harmonic output complex field.
+    """
+    return L*np.exp(1j*QPM*L/2)*np.sinc(QPM*L/2/np.pi)
+
 def double_pass_SHG(QPM, L, phi_reflec):
     """
     Calculate the second harmonic output for a double pass through the crystal.
@@ -178,7 +192,7 @@ def SH_field_left(QPM, L):
     term : array
         Second harmonic field strength after reflection.
     """
-    term = -second_harmonic_output(QPM, L)
+    term = -complex_second_harmonic_field(QPM, L)
     return term
 def SH_field_right(QPM, L,Delta_r):
     """
@@ -194,7 +208,7 @@ def SH_field_right(QPM, L,Delta_r):
     term : array
         ?????? Physical?
     """
-    return L * np.exp(1j * QPM * ( 3/2*L+2*Delta_r)) * np.sinc(QPM * L / 2)
+    return L * np.exp(1j * QPM * ( 3/2*L+2*Delta_r)) * np.sinc(QPM * L / 2 / np.pi)
 def final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_w, omega_w):
     """
     Calculate the final second harmonic field exiting the cavity.
