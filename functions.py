@@ -248,4 +248,42 @@ def final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_
     real_val = np.real(numerator/denominator)
     imag_val = np.imag(numerator/denominator)
     return np.sqrt(real_val**2 + imag_val**2)
+def field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w):
+    """
+    Calculate the field envelope of the cavity-enhanced phase-matching response from the cavity double resonance condition. Setting k_2w*D = 0
+    Parameters:
+    tau : float
+        Transmission coefficient of the output coupler.
+    rho : float
+        Reflection coefficient of the output coupler.
+    QPM : array
+        Quasi-phase mismatch in the crystal.
+    L : float
+        Length of the crystal.
+    Delta_r : float
+        Error in the right edge of the crystal.
+    Delta_l : float
+        Error in the left edge of the crystal.
+    D : float
+        Distance from the crystal to the output coupler.
+    n_2w : array
+        Refractive index at the second harmonic frequency.
+    omega_2w : array
+        Angular frequency of the second harmonic.
+    n_w : array
+        Refractive index at the fundamental frequency.
+    omega_w : array
+        Angular frequency of the fundamental.
+     Returns:
+    array
+        Field envelope of the cavity-enhanced phase-matching response.
+    """
+    field_left = SH_field_left(QPM, L)
+    field_right = SH_field_right(QPM, L, Delta_r)
+    phase_mismatch_term = phase_mismatch(n_2w, omega_2w, n_w, omega_w)
+    numerator = 1j * tau * (field_left*np.exp(-1j * phase_mismatch_term*Delta_l) + field_right*np.exp(-1j * phase_mismatch_term*Delta_r))
+    denominator = 1 - rho
+    real = np.real(numerator/denominator)
+    imag = np.imag(numerator/denominator)
+    return np.sqrt(real**2 + imag**2)
 
