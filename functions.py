@@ -196,7 +196,7 @@ def SH_field_left(QPM, L):
     return term
 def SH_field_right(QPM, L,Delta_r):
     """
-    ????? Physical?
+Calculate the field strength at the right end of the crystal, integrating from 0 to L+Delta_r.
     Parameters:
     QPM : array
         Quasi-phase mismatch values.
@@ -206,7 +206,7 @@ def SH_field_right(QPM, L,Delta_r):
         Edge width at the right end of the crystal.
     Returns:
     term : array
-        ?????? Physical?
+        Field strength at the right end of the crystal.
     """
     return L * np.exp(1j * QPM * ( 3/2*L+2*Delta_r)) * np.sinc(QPM * L / 2 / np.pi)
 def final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_w, omega_w):
@@ -286,4 +286,64 @@ def field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omeg
     real = np.real(numerator/denominator)
     imag = np.imag(numerator/denominator)
     return np.sqrt(real**2 + imag**2)
-
+def total_length(Delta_l, Delta_r, D, L):
+    """
+    Calculates the total effective length of the cavity considering the crystal length, the distance to the output coupler, and the edge errors.
+    Parameters:
+    Delta_l (float): Error in the left edge of the crystal (in meters)
+    Delta_r (float): Error in the right edge of the crystal (in meters)
+    D (float): Distance from the crystal to the output coupler (in meters)
+    L (float): Length of the crystal (in meters)
+    """
+    return 2*(D + L + Delta_l + Delta_r)
+def relative_phase_RT(Delta_l, Delta_r, D, L, n_2w, omega_2, n_w, omega_w, phi_l, phi_r):
+    """
+    Calculates the relative phase accumulated in one round trip of the cavity considering the total effective length and the phase shifts from the edges and reflection.
+    Parameters:
+    Delta_l (float): Error in the left edge of the crystal (in meters)
+    Delta_r (float): Error in the right edge of the crystal (in meters)
+    D (float): Distance from the crystal to the output coupler (in meters)
+    L (float): Length of the crystal (in meters)
+    n_2w (float): Refractive index at the second harmonic frequency
+    omega_2 (float): Angular frequency of the second harmonic (in rad/s)
+    n_w (float): Refractive index at the fundamental frequency
+    omega_w (float): Angular frequency of the fundamental (in rad/s)
+    phi_l (float): Phase shift at the left edge of the crystal (in radians)
+    phi_r (float): Phase shift upon reflection at the output coupler (in radians)
+    """
+    L_total = total_length(Delta_l, Delta_r, D, L)
+    k_2w = wave_vector(n_2w, omega_2)
+    k_w = wave_vector(n_w, omega_w)
+    term = 2*(L_total * (k_2w - 2*k_w) + phi_l + phi_r)
+    return term
+#Double resonance condition is when phi_RT mod 2*pi = 0, which means that the round trip phase is an integer multiple of 2*pi, leading to constructive interference and enhanced SHG efficiency.
+def double_resonance_temperatures(T, Delta_l, Delta_r, D, L, n_2w, omega_2, n_w, omega_w, phi_l, phi_r):
+    """
+    Finds indices in T where the double resonance condition is met.
+    Double resonance implies relative round trip phase is a multiple of 2*pi.
+    """
+    # Vectorized calculation of phase for all temperatures
+    phi_RT = relative_phase_RT(Delta_l, Delta_r, D, L, n_2w, omega_2, n_w, omega_w, phi_l, phi_r)
+    
+    # We look for roots of sin(phi_RT / 2) = 0
+    # This corresponds to phi_RT = 2 * m * pi
+    val = np.sin(phi_RT / 2)
+    
+    # Find zero crossings by looking for sign changes
+    # sign returns -1, 0, or 1. diff != 0 implies a change.
+    sign_changes = np.where(np.diff(np.sign(val)))[0]
+    
+    T_indices = []
+    for i in sign_changes:
+        # Check which of the two points (i or i+1) is closer to zero
+        if np.abs(val[i]) < np.abs(val[i+1]):
+            T_indices.append(i)
+        else:
+            T_indices.append(i+1)
+            
+    # Also check for exact zeros (unlikely but possible)
+    exact_zeros = np.where(val == 0)[0]
+    if len(exact_zeros) > 0:
+         T_indices.extend(exact_zeros)
+         
+    return sorted(list(set(T_indices)))
