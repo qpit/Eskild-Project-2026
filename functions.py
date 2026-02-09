@@ -193,7 +193,7 @@ def SH_field_left(QPM, L):
     term : array
         Second harmonic field strength after reflection.
     """
-    term = -complex_second_harmonic_field(QPM, L)
+    term = complex_second_harmonic_field(QPM, L)
     return term
 def SH_field_right(QPM, L,Delta_r):
     """
@@ -249,7 +249,7 @@ def final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_
     real_val = np.real(numerator/denominator)
     imag_val = np.imag(numerator/denominator)
     return np.sqrt(real_val**2 + imag_val**2)
-def field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w):
+def field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w, phi_l=0, phi_r=0):
     """
     Calculate the field envelope of the cavity-enhanced phase-matching response from the cavity double resonance condition. Setting k_2w*D = 0
     Parameters:
@@ -275,6 +275,10 @@ def field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omeg
         Refractive index at the fundamental frequency.
     omega_w : array
         Angular frequency of the fundamental.
+    phi_l : float
+        Phase shift from the left mirror/edge.
+    phi_r : float
+        Phase shift from the right mirror/edge.
      Returns:
     array
         Field envelope of the cavity-enhanced phase-matching response.
@@ -282,7 +286,8 @@ def field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omeg
     field_left = SH_field_left(QPM, L)
     field_right = SH_field_right(QPM, L, Delta_r)
     phase_mismatch_term = phase_mismatch(n_2w, omega_2w, n_w, omega_w)
-    numerator = 1j * tau * (field_left*np.exp(-1j * phase_mismatch_term*Delta_l) + field_right*np.exp(-1j * phase_mismatch_term*Delta_r))
+    # The left field reflects off the left mirror, acquiring phi_l phase shift relative to the right field.
+    numerator = 1j * tau * (field_left*np.exp(-1j * phase_mismatch_term*Delta_l)*np.exp(1j*phi_l) + field_right*np.exp(-1j * phase_mismatch_term*Delta_r))
     denominator = 1 - rho
     real = np.real(numerator/denominator)
     imag = np.imag(numerator/denominator)
@@ -355,7 +360,6 @@ def matched_peaks(temperature, peaks_in_SHG, T_indi, tol=0.5):
     Returns:
     - List of tuples containing matched peak temperatures and corresponding double resonance temperatures.
     """
-
     tol = 0.5  # Tolerance in °K for matching peaks
     matched_peaks = []
     for peak_temp in temperature[peaks_in_SHG]:
@@ -364,7 +368,7 @@ def matched_peaks(temperature, peaks_in_SHG, T_indi, tol=0.5):
                 matched_peaks.append((peak_temp, res_temp))
                 break
     return matched_peaks
-def envelope_and_T(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w, D, temperature, phi_l=0, phi_r=0, peaks_in_SHG=None, T_indi=None):
+def envelope_and_T(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w, D, temperature, phi_l=0, phi_r=0):
     """
     Calculate the field envelope for given parameters and phase shifts. And find the resonance temperatures for the given phase shifts.
     
@@ -399,23 +403,12 @@ def envelope_and_T(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omeg
         Phase shift at the right boundary (default is 0).
     
     Returns:
-    envelope_sq : array
-        The squared normalized envelope field.
-    resonance_temperatures : array
-        The resonance temperatures for the given phase shifts.
+    envelope : array
+        The field envelope.
+    T_indices : array
+        Indices of resonance temperatures.
     """
-    phase_mismatch_value = phase_mismatch(n_2w, omega_2w, n_w, omega_w)
-    envelope1 = field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w)
-    phase_term = np.exp(-1j * Delta_r * (phase_mismatch_value)) + np.exp(-1j*Delta_l * (phase_mismatch_value))*np.exp(1j * (phi_l + phi_r))
-    envelope = envelope1 * phase_term
-
-
+    envelope = field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w, phi_l, phi_r)
     T_indi = double_resonance_temperatures(temperature, Delta_l, Delta_r, D, L, n_2w, omega_2w, n_w, omega_w, phi_l, phi_r)
-    exiting_field = final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_w, omega_w)
-    peaks = []
-    peaks_in_SHG, _ = find_peaks(np.abs(exiting_field)**2)
-    for i in matched_peaks(temperature, peaks_in_SHG, T_indi):
-        print(f"Matched Peak: SHG Peak Temp = {i[0] - 273.15:.2f} °C, Double Resonance condition Temp = {i[1] - 273.15:.2f} °C")
-        peaks.append(i)
-    return envelope, np.array(peaks, dtype=int)
+    return envelope, np.array(T_indi)
 
