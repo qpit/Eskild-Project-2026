@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import joblib as jl
 import numpy as np
+from scipy.signal import find_peaks
 
 def refractive_index_sellmeier(A, B, C, D, E, F, wavelength):
     """
@@ -298,23 +299,17 @@ def total_length(Delta_l, Delta_r, D, L):
     return 2*(D + L + Delta_l + Delta_r)
 def relative_phase_RT(Delta_l, Delta_r, D, L, n_2w, omega_2, n_w, omega_w, phi_l, phi_r):
     """
-    Calculates the relative phase accumulated in one round trip of the cavity considering the total effective length and the phase shifts from the edges and reflection.
-    Parameters:
-    Delta_l (float): Error in the left edge of the crystal (in meters)
-    Delta_r (float): Error in the right edge of the crystal (in meters)
-    D (float): Distance from the crystal to the output coupler (in meters)
-    L (float): Length of the crystal (in meters)
-    n_2w (float): Refractive index at the second harmonic frequency
-    omega_2 (float): Angular frequency of the second harmonic (in rad/s)
-    n_w (float): Refractive index at the fundamental frequency
-    omega_w (float): Angular frequency of the fundamental (in rad/s)
-    phi_l (float): Phase shift at the left edge of the crystal (in radians)
-    phi_r (float): Phase shift upon reflection at the output coupler (in radians)
+    Calculates the relative phase accumulated in one round trip of the cavity.
+    Assumes D is air/vacuum (negligible dispersion) so phase mismatch only accumulates in the crystal (L) and edges.
     """
-    L_total = total_length(Delta_l, Delta_r, D, L)
+    # Round trip length inside the dispersive material (crystal + edges)
+    L_dispersive_RT = 2 * (L + Delta_l + Delta_r)
+    
     k_2w = wave_vector(n_2w, omega_2)
     k_w = wave_vector(n_w, omega_w)
-    term = 2*(L_total * (k_2w - 2*k_w) + phi_l + phi_r)
+    
+    # Phase mismatch * dispersive length + mirror phases 
+    term = (k_2w - 2*k_w) * L_dispersive_RT + phi_l + phi_r
     return term
 #Double resonance condition is when phi_RT mod 2*pi = 0, which means that the round trip phase is an integer multiple of 2*pi, leading to constructive interference and enhanced SHG efficiency.
 def double_resonance_temperatures(T, Delta_l, Delta_r, D, L, n_2w, omega_2, n_w, omega_w, phi_l, phi_r):
@@ -347,3 +342,80 @@ def double_resonance_temperatures(T, Delta_l, Delta_r, D, L, n_2w, omega_2, n_w,
          T_indices.extend(exact_zeros)
          
     return sorted(list(set(T_indices)))
+def matched_peaks(temperature, peaks_in_SHG, T_indi, tol=0.5):
+    """
+    Match peaks in SHG output with double resonance temperatures within a specified tolerance.
+    
+    Parameters:
+    - temperature: Array of temperature values.
+    - peaks_in_SHG: Indices of peaks in the SHG output.
+    - T_indi: Indices of double resonance temperatures.
+    - tol: Tolerance in °K for matching peaks (default is 0.5 K).
+    
+    Returns:
+    - List of tuples containing matched peak temperatures and corresponding double resonance temperatures.
+    """
+
+    tol = 0.5  # Tolerance in °K for matching peaks
+    matched_peaks = []
+    for peak_temp in temperature[peaks_in_SHG]:
+        for res_temp in temperature[T_indi]:
+            if abs(peak_temp - res_temp) <= tol:
+                matched_peaks.append((peak_temp, res_temp))
+                break
+    return matched_peaks
+def envelope_and_T(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w, D, temperature, phi_l=0, phi_r=0, peaks_in_SHG=None, T_indi=None):
+    """
+    Calculate the field envelope for given parameters and phase shifts. And find the resonance temperatures for the given phase shifts.
+    
+    Parameters:
+    tau : float
+        Transmission coefficient of the output coupler.
+    rho : float
+        Reflection coefficient of the output coupler.
+    QPM : array
+        Quasi-phase mismatch values.
+    L : float
+        Length of the crystal.
+    Delta_r : float
+        Edge width at the right end of the crystal.
+    Delta_l : float
+        Edge width at the left end of the crystal.
+    n_2w : array
+        Refractive index at 2w frequencies.
+    omega_2w : array
+        Angular frequencies at 2w.
+    n_w : array
+        Refractive index at w frequencies.
+    omega_w : array
+        Angular frequencies at w.
+    D : float
+        Distance from the crystal to the output coupler.
+    temperature : array
+        Temperature array.
+    phi_l : float, optional
+        Phase shift at the left boundary (default is 0).
+    phi_r : float, optional
+        Phase shift at the right boundary (default is 0).
+    
+    Returns:
+    envelope_sq : array
+        The squared normalized envelope field.
+    resonance_temperatures : array
+        The resonance temperatures for the given phase shifts.
+    """
+    phase_mismatch_value = phase_mismatch(n_2w, omega_2w, n_w, omega_w)
+    envelope1 = field_envelope(tau, rho, QPM, L, Delta_r, Delta_l, n_2w, omega_2w, n_w, omega_w)
+    phase_term = np.exp(-1j * Delta_r * (phase_mismatch_value)) + np.exp(-1j*Delta_l * (phase_mismatch_value))*np.exp(1j * (phi_l + phi_r))
+    envelope = envelope1 * phase_term
+
+
+    T_indi = double_resonance_temperatures(temperature, Delta_l, Delta_r, D, L, n_2w, omega_2w, n_w, omega_w, phi_l, phi_r)
+    exiting_field = final_cavity_field(tau, rho, QPM, L, Delta_r, Delta_l, D, n_2w, omega_2w, n_w, omega_w)
+    peaks = []
+    peaks_in_SHG, _ = find_peaks(np.abs(exiting_field)**2)
+    for i in matched_peaks(temperature, peaks_in_SHG, T_indi):
+        print(f"Matched Peak: SHG Peak Temp = {i[0] - 273.15:.2f} °C, Double Resonance condition Temp = {i[1] - 273.15:.2f} °C")
+        peaks.append(i)
+    return envelope, np.array(peaks, dtype=int)
+
