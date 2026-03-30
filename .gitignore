@@ -1,0 +1,19 @@
+# Virtual env
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (IMPORTANT)
+Data/
+Overnight_data/
+
+# Optional (recommended)
+*.csv
+*.parquet
+*.zip
+*.pkl
