@@ -124,11 +124,11 @@ class Scope(Digitizer):
             # We use a 0.2s delay to prevent "Query Unterminated"
             y_raw = self.DSO.query_binary_values(
                 ":WAVeform:DATA?", 
-                datatype='b', 
+                datatype='B', 
                 is_big_endian=True, 
                 delay=0.2 
             )
-            y_raw = np.array(y_raw, dtype=np.int8)
+            y_raw = np.array(y_raw, dtype=np.uint8)
 
             # 4. Get Scaling (one by one)
             yinc = float(self.DSO.query(":WAVeform:YINC?"))
